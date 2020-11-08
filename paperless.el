@@ -3,8 +3,7 @@
 ;; - use relative path to paperless-root-dir in the buffer
 ;; - rename composed of 3 sections separated by underscore,
 ;;   each section uses lowercase words separated by dashes,
-;;   sections are hardcoded to start with
-;;   and uses ido to complete using previous documents
+;;   and uses ido to complete using previous documents filenames
 ;; - l stores paperless link for org-mode
 ;;
 ;; TODO(mi_):

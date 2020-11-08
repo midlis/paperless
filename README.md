@@ -1,3 +1,13 @@
+## [midlis] Fork changes
+
+- use relative path to paperless-root-dir in the buffer
+- rename composed of 3 sections separated by underscore,
+  each section uses lowercase words separated by dashes,
+  and uses ido to complete using previous documents filenames
+- l stores paperless link for org-mode
+
+# Original README
+
 [![MELPA](https://melpa.org/packages/paperless-badge.svg)](https://melpa.org/#/paperless) [![Build Status](https://travis-ci.org/atgreen/paperless.svg?branch=master)](https://travis-ci.org/atgreen/paperless)
 
 ## Paperless - Emacs assisted PDF document filing
