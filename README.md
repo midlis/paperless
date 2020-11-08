@@ -4,7 +4,19 @@
 - rename composed of 3 sections separated by underscore,
   each section uses lowercase words separated by dashes,
   and uses ido to complete using previous documents filenames
-- l stores paperless link for org-mode
+- `l` stores paperless link for org-mode
+
+Note:
+The filenames are
+- lowercased
+- composed of 3 sections:
+  - the source of document (e.g. the institution or company name)
+  - the type of document (anything, e.g. statement, new-credit-card, etc.)
+  - the date when the document was issued (e.g. 2020-11-08)
+- sections are separated by underscores
+- each section is using dashes to separate words
+
+Example: `ovo-energy_statement_2020-11-08.pdf`
 
 # Original README
 
