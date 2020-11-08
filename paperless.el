@@ -1,4 +1,18 @@
 ;;; paperless.el --- A major mode for sorting and filing PDF documents.
+;; Mi_ changes:
+;; - use relative path to paperless-root-dir in the buffer
+;; - rename composed of 3 sections separated by underscore,
+;;   each section uses lowercase words separated by dashes,
+;;   sections are hardcoded to start with
+;;   and uses ido to complete using previous documents
+;; - l stores paperless link for org-mode
+;;
+;; TODO(mi_):
+;; - add support images
+;; - add check that rename:
+;;   - does not contain underscores
+;;   - replace spaces by dashes
+;;   - makes it lowercase
 
 ;; Copyright (c) 2017, 2018 Anthony Green
 
@@ -45,6 +59,7 @@
 (require 's)
 (require 'cl-lib)
 (require 'doc-view)
+(require 'org-paperless)
 
 (defgroup paperless nil
   "A group for paperless customtizations."
@@ -64,6 +79,9 @@
 
 (defvar paperless--table-contents)
 (defvar paperless--directory-list)
+(defvar paperless--filename-list) ;; TODO(mi_): move this to local scope only
+(defvar paperless--source-list)
+(defvar paperless--type-list)
 
 ;;;###autoload
 (defun paperless ()
@@ -77,9 +95,10 @@
 	(mapcar
 	 (lambda (i)
 	   (list i (vector "" (file-name-nondirectory i) "")))
-	 (directory-files paperless-capture-directory t ".*pdf")))
+	 (directory-files paperless-capture-directory t ".*pdf")))  ;; TODO(mi_): add images
   (pop-to-buffer (concat "*Paperless* - " paperless-capture-directory))
   (paperless-scan-directories)
+  (paperless-scan-filenames)
   (paperless-mode)
   (tabulated-list-print t))
 
@@ -121,23 +140,46 @@
   "Scan target directory hierarchy"
   (interactive)
   (message "Scanning directories under %s" paperless-root-directory)
+  (defun relpath (s)
+    (f-relative s paperless-root-directory))
   ;; Recursively build the list of destination directories, but don't
   ;; include hidden directories.
   (setq paperless--directory-list
+      (mapcar 'relpath
 	(cl-remove-if
 	 (lambda (s)
 	   (s-contains? "/." s))
-	 (f-directories paperless-root-directory nil t))))
+	 (f-directories paperless-root-directory nil t)))))
+
+(defun paperless-scan-filenames ()
+  "Scan filenames in hierarchy"
+  (interactive)
+  (message "Scanning filenames under %s" paperless-root-directory)
+  ;; Recursively build the list of files under paperless-root-directory
+  (setq paperless--filename-list
+	(mapcar 'f-base
+		(f-files paperless-root-directory nil t)))
+  (defun split-filename (fn)
+    (split-string fn "_"))
+  (setq paperless--split-filename-list
+	(mapcar 'split-filename paperless--filename-list))
+  (setq paperless--source-list
+	(delete-dups (mapcar 'car paperless--split-filename-list)))
+  (setq paperless--type-list
+	(delete-dups (mapcar 'cadr paperless--split-filename-list))))
 
 (defun paperless-rename ()
   "Rename the current document."
   (interactive)
-  (let ((new-name (read-from-minibuffer "New name: "))
-	(vctr (cadr (assoc (tabulated-list-get-id) paperless--table-contents))))
-    (setf (elt vctr 1) (if (file-name-extension new-name)
-			   new-name
-			 (concat new-name ".pdf"))))
-  (tabulated-list-print t))
+  (let* ((new-source (ido-completing-read "Document source: " paperless--source-list))
+         (new-type (ido-completing-read "Document type: " paperless--type-list))
+         (new-date (org-read-date))
+         (new-name (concat new-source "_" new-type "_" new-date))
+         (vctr (cadr (assoc (tabulated-list-get-id) paperless--table-contents))))
+             (setf (elt vctr 1) (if (file-name-extension new-name)
+				    new-name
+				  (concat new-name ".pdf")))
+             (tabulated-list-print t)))
 
 (defun paperless-execute ()
   "Batch execute all pending document processing."
@@ -151,7 +193,7 @@
 		(progn
 		  (if (string-equal (elt vctr 2) "[ TRASH ]")
 		      (move-file-to-trash (car i))
-		    (rename-file (car i) (concat (elt vctr 2) "/" (elt vctr 1))))
+		    (rename-file (car i) (concat (f-canonical paperless-root-directory) "/" (elt vctr 2) "/" (elt vctr 1))))
 		  (car i)))))
 	  paperless--table-contents)))
     (mapc
@@ -200,14 +242,19 @@
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
+(defun  paperless-scan ()
+  (paperless-scan-directories)
+  (paperless-scan-filenames))
+
 (setq paperless-mode-map
       (let ((map (make-sparse-keymap)))
 	(define-key map (kbd "SPC") 'paperless-display)
 	(define-key map "f" 'paperless-file)
-	(define-key map "g" 'paperless-scan-directories)
+	(define-key map "g" 'paperless-scan)
 	(define-key map "r" 'paperless-rename)
 	(define-key map "d" 'paperless-delete)
 	(define-key map "x" 'paperless-execute)
+	(define-key map "l" 'org-store-link)
 	
 	;; Zoom in/out.
 	(define-key map "+" 'paperless-doc-view-enlarge)
